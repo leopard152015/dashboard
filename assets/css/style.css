@@ -1,0 +1,12 @@
+.section.sidebar {
+  top: 61px;
+  border-bottom: 10px solid #ececec;
+  border-left: 10px solid #ececec;
+}
+
+#settings {
+  
+}
+#toggle:onclick ~ #spoiler {
+  background-color: rgba(123, 234, 32,1) ;
+}

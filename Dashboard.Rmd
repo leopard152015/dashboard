@@ -3,24 +3,18 @@ title: "Dashboard"
 runtime: shiny
 output: 
   flexdashboard::flex_dashboard:
+    css: ./assets/css/style.css
     orientation: rows
     vertical_layout: fill
     social: menu
+    number_sections: true
     theme: spacelab
 ---
 
+
 ```{r setup, include=FALSE}
-#lanSad
-library(flexdashboard)
-library(plotly)
-library(dygraphs)
-library(DBI)
-library(mcga)
-library(plyr)
-library(pracma)
-source("SqlSelection.R")
-source("Plotter.R")
-source("MathMod.R")
+###http://www.rapidtables.com/convert/energy/joule-to-kcal.htm
+source("server/server_head.R")
 
 #define global variables
 sizeDb <- 0
@@ -33,19 +27,36 @@ data <- data.frame()
 
 
 # Define the list of available databases
-lookupDb <- structure(c("databases/dbWalkMB61Hz.db", "databases/db50SquatsMPh16Hz.db","databases/dbEating.db", "databases/db50SquatsMB(61Hz).db","databases/dbEatingFatherMB(61Hz).db",
-                        "databases/dbWalkMB-MPh.db"), .Names = c("Walk-MB(61Hz)", "Squats50-MPh(16Hz)", "Eat-Mb(61Hz)", "Squats50-MB(61Hz)", "Eat-Father-Mb(61Hz)","WalkMB-MPh(GPS)"))
+lookupDb <- structure(c("server/databases/dbWalkMB61Hz.db", "server/databases/db50SquatsMPh16Hz.db","server/databases/dbEating.db", "server/databases/db50SquatsMB(61Hz).db","server/databases/dbEatingFatherMB(61Hz).db","server/databases/dbWalkMB-MPh.db", "server/databases/GrishaGoRunMB.db"), 
+                  .Names = c("Walk-MB(61Hz)", "Squats50-MPh(16Hz)", "Eat-Mb(61Hz)", "Squats50-MB(61Hz)", "Eat-Father-Mb(61Hz)","WalkMB-MPh(GPS)", "GrishaGoRunMB"))
+
 nameDb <- reactive( as.character(input$database))
 
 dbCurrent <- 0
 
 namePf <- reactive( as.character(input$platforme_type))
 
+
 nameDs <- reactive( as.character(input$datasource))
 
-nameAxis <- reactive(as.character(input$axis))
+nameFunc <- reactive(as.character(input$functions))
+
+funcAxis <- reactive(as.character(input$axis))
+
+funcMin <- reactive(input$limitmin)
+
+funcMax <- reactive(input$limitmax)
+
+funcAllowSigCentr <- reactive(input$allowSig)
+
+funcIntAllowIntCentr <- reactive(input$allowInt)
+
+funcLinear <- reactive(input$allowLinear)
+
 
 ```
+
+
 
 Sidebar {.sidebar}
 ======================================================================
@@ -54,31 +65,20 @@ Sidebar {.sidebar}
 ```{r}
 
 # Define input database
-selectInput('database', label = h4('Select a database'), choices = lookupDb, selected = "dbEating.db")
+selectInput('database', label = h5('Select a database'), choices = lookupDb, selected = "dbEating.db")
 
 # Define input platforme type
-selectInput('platforme_type', label = h4('Select a platforme type'), choices = lookupPf, selected = "")
+selectInput('platforme_type', label = h5('Select a platforme type'), choices = lookupPf, selected = "")
 
-# Define input database
-selectInput('datasource', label = h4('Select a signal type'), choices = lookupDs, selected = "Accelerometer")
 
-# Define input cut off
-selectInput('axis', label = 'Select a axis', choices = lookupAxis, selected = "X")
+#sliderInput('span', label = 'Low Cutoff Fragment', min = 0.1, max = 0.9, #value = 0.3, step = 0.1)
+
 
 connection <- reactive(openDatabase(nameDb()))
 
 data <- reactive(selectData(connection(), nameDs(), namePf()))
 
 sizeDb <- reactive(nrow(data()))
-
-textInput('limitmin', label="min sample", value = 1)
-textInput('limitmax', label="max sample", value = 100)
-
-sliderInput('span', label = 'Low Cutoff Fragment', min = 0.1, max = 0.9, value = 0.3, step = 0.1)
-#sliderInput('spanHigh', label = 'High Cutoff Fragment', min = 1, max = #10000, value = sizeDb(), step = 1)
-
-
-
 ```
 
 Found records = `r reactive(sizeDb())`
@@ -90,6 +90,429 @@ Start time of recording = `r reactive(as.character(startTime()))`
 Stop time of recording = `r reactive(as.character(stopTime()))`
 
 Signal
+================================================================================================
+
+
+
+Row
+---------------------------
+
+```{r }
+
+#Movement {data-navmenu="Signal"}
+#======================================================================
+#selectInput('datasource', label = h5('Select a signal type'), choices = lookupDsMove, selected = "Accelerometer")
+
+selectInput('datasource', label = h6('Select a signal type'), choices = lookupDs, selected = "Accelerometer", width=145)
+selectInput('functions', label = h6('Select a function'), choices = lookupFunc, selected = "", width=145)
+```
+
+
+### 
+   
+
+<div id="settings" style="display:none">
+
+```{r }
+conditionalPanel(
+  condition =  "input.functions == 'Integral1'",
+  textInput('limitmin', label="min", value = 1),
+  textInput('limitmax', label="max", value = 1),
+  checkboxInput('allowSig', label = 'Allow signal centred', value=T),        
+  checkboxInput('allowLinear', label = 'Allow  linear signal (-g)', value=T),
+  selectInput('axis', label = 'Select a axis', choices = lookupAxis, selected = "X", width=100))
+conditionalPanel(
+  condition =  "input.functions == 'Integral2'",
+  textInput('limitmin', label="min", value = 1),
+  textInput('limitmax', label="max", value = 1),
+  checkboxInput('allowSig', label = 'Allow signal centred', value=T),        
+  checkboxInput('allowLinear', label = 'Allow  linear signal (-g)',value=T),
+  checkboxInput('allowInt', label = 'Allow integral1 centred', value=T),
+  selectInput('axis', label = 'Select a axis', choices = lookupAxis, selected = "X", width=100))
+conditionalPanel(
+  condition = "input.functions == 'Breakouts'",
+  textInput('limitmin', label="min", value = 1),
+  textInput('limitmax', label="max", value = 1)
+#  selectInput('anomaly_method', label = 'Select a mentod for anomaly detection', choices = lookup)
+)
+
+actionButton("funcRun", "Run")
+
+```
+</div>
+
+ <button title="Click to show answer"  type="button" onclick="if(document.getElementById('settings') .style.display=='none') {document.getElementById('settings') .style.display=''}else{document.getElementById('settings') .style.display='none'}">Functions settings +/-</button>
+   
+
+ 
+
+
+
+Row  {data-height=1100 .tabset }
+------------------------------------------------------------------------
+
+### Signal  
+
+
+```{r }
+
+selectData <- function(con, ds, pf){
+
+  switch(ds,
+         "'ACCELEROMETER'" = selectMovementData(con, ds, pf),
+         "'GYROSCOPE'" = selectMovementData(con, ds, pf),
+          "'HEART_RATE'" = selectHealthData(con, ds, pf),
+         "'SKIN_TEMPERATURE'" = selectHealthData(con, ds, pf),
+         "'GALVANIC_SKIN_RESPONSE'" = selectHealthData(con, ds, pf),
+         "'SPEED'" = selectHealthData(con, ds, pf),
+         "'STEP_COUNT'" = selectHealthData(con, ds, pf),
+         "'CALORY_BURN'" = selectHealthData(con, ds, pf),
+         "'DISTANCE'" = selectHealthData(con, ds, pf),
+         "'PACE'" = selectHealthData(con, ds, pf),         
+         "'MOTION_TYPE'" = selectHealthData(con, ds, pf), 
+         "'RR_INTERVAL'" = selectHealthData(con, ds, pf))
+} 
+
+
+
+plotData <- function(ds, data){
+
+  switch(ds,
+        "'ACCELEROMETER'" = plotMovementData(data, "Accelerometer"),
+         "'GYROSCOPE'" = plotMovementData(data, "Gyroscope"),
+         "'HEART_RATE'" = plotHealthData(data, "Heart rate"),
+         "'SKIN_TEMPERATURE'" = plotHealthData(data, "Skin Temperature"),
+         "'GALVANIC_SKIN_RESPONSE'" = plotHealthData(data, "Galvanic skin temperature"),
+         "'SPEED'" = plotHealthData(data, "Speed"),
+         "'STEP_COUNT'" = plotHealthData(data, "Step count"),
+         "'CALORY_BURN'" = plotHealthData(data, "Calory burn"),
+         "'DISTANCE'" = plotHealthData(data, "Distance"),
+         "'PACE'" = plotHealthData(data, "Pace"),         
+         "'MOTION_TYPE'" = plotHealthData(data, ""),
+         "'RR_INTERVAL'" = plotHealthData(data, "RR interval")) 
+}
+comuteSizeDb <- function(data){
+    return(length(data))
+}  
+
+
+output$scatterM <- renderDygraph({ plotData(nameDs(), data())})
+dygraphOutput('scatterM', width = "80%")
+
+minTime <-reactive(data()[1,]$dt)
+maxTime <- reactive(data()[sizeDb(),]$dt)
+
+startTime <- reactive(minTime())
+stopTime <- reactive(maxTime())
+
+deltaT <- reactive((as.numeric(maxTime()) - as.numeric(minTime()))/sizeDb())
+
+frequency <- reactive(1/deltaT())
+ 
+    
+```
+
+### Table
+```{r}
+#library(DT)
+# renderDataTable({ 
+#  DT::datatable(data()) %>% formatStyle(
+ #   'x',
+#    backgroundColor = styleInterval(3.4, c('gray', 'yellow'))
+#  )
+#})
+
+
+
+renderPrint({
+    summary(data())
+  })
+
+
+```
+
+
+Row
+---------------------------------------------------------
+
+###
+ 
+```{r}
+
+#reactive({
+#switch(nameFunc(), 
+#        "Integral1" = { doIntegral1(data)})
+#       "Integral2" = { doIntegral2()})
+#        "Density" = doDensity(data),
+#       "Breakouts" = {
+          
+         # doBreakouts(data)
+  #          sliderInput("range", label = h6("Fragment #range"), min = 1, #max = sizeDb(), step=1,   value = c(25, 175))
+#          },
+#        "Period" = doPeriod(data),
+#        "Amplitude" = doAmplitude(data))
+#}
+#})
+```
+
+
+```{r}
+
+selectFragment <- function( sig, axis, a, b, centred ){
+
+len = nrow(sig)
+med = 0
+
+
+switch(axis,
+         "X" = {subset <- sig$x[c(a:b)]} ,
+         "Y" = {subset <- sig$y[c(a:b)]} ,
+         "Z" = {subset <- sig$z[c(a:b)]} )
+  
+  if (centred == TRUE){
+    med<-mean(subset)
+    main_axis <- subset - med
+
+  }else
+  {
+    main_axis <- subset
+  }
+
+   switch(axis,
+         "X" = {x <- main_axis; y <- sig$y[c(a:b)]; z <- sig$z[c(a:b)] },
+         "Y" = {y <- main_axis; x <- sig$x[c(a:b)]; z <- sig$z[c(a:b)] },
+         "Z" = {z <- main_axis; x <- sig$x[c(a:b)]; y <- sig$y[c(a:b)] } )
+
+  counter <- c(a:b)
+  fragment <- data.frame(counter, x, y , z)
+  
+  return( fragment)
+}  
+```
+
+```{r}
+doIntegral1 <- function(){
+
+  data <- reactive(selectData(connection(), nameDs(), namePf()))
+  data_correct <- reactive(deleteBias_1(data()))
+  frgmnt <- reactive(selectFragment(data_correct(), funcAxis(), funcMin(), funcMax(), 
+funcAllowSigCentr()) )
+
+
+  return(reactive(integral1(frgmnt()$x, 0, length(frgmnt()$x), deltaT(), T) ))
+
+}
+```
+
+```{r}
+
+doIntegral2 <- function(){
+  data <- reactive(selectData(connection(), nameDs(), namePf()))
+  data_correct <- reactive(deleteBias_1(data()))
+  frgmnt <- reactive(selectFragment(data_correct(), funcAxis(), funcMin(), funcMax(), funcAllowSigCentr() ))
+  return(reactive( integral2(frgmnt()$x, 0, length(frgmnt()$x), deltaT(), funcIntAllowIntCentr()) ))
+}
+```
+
+
+
+
+```{r}
+  doDensity <- function(sig){
+    
+  }
+```
+
+```{r}
+doBreakouts <- function(sig){
+
+
+  
+}
+```
+
+```{r}
+  doPeriod <- function(sig){
+    
+  }
+```
+
+```{r}
+  doAmplitude <- function(sig){
+    
+  }
+```
+
+```{r}
+
+
+#data <- reactive(selectData(connection(), nameDs(), namePf()))
+#data_correct <- reactive(deleteBias_1(data()))
+#frgmnt <- reactive(selectFragment(data_correct(), funcAxis(), a(), b(), 
+#allowSigCentred ))
+#intgrl <- reactive(integral(frgmnt()$x, 0, length(frgmnt()$x), deltaT(), T) )
+
+
+
+#library(signal)
+#reactive({
+#cutoffHz <- 1.28
+#sampleHz <- reactive(frequency())
+#nyqHz = sampleHz()/2
+#f <- butter(9, cutoffHz/nyqHz, type="low" )
+#ts[,c('ly2') := lapply(.(y2), function(x)(filtfilt(f,intgrl())))]
+#intgrl()$y2 <-ts$y2 - ts$ly2
+#})
+#intgrl()$y2 <- b})
+```
+
+
+
+
+``` {r}
+
+
+p <- eventReactive(input$funcRun ,{ #plotIntegral(intgrl,input$spanLow)})
+
+  intr<-doIntegral2()
+  return(plotIntegral( intr(),input$spanLow))
+})
+output$integral <- renderDygraph({p()})
+dygraphOutput('integral')
+  
+  
+  
+#switch(nameFunc(), 
+#        "Integral1" = { doIntegral1(); #plotIntegral(intgrl1,plotIntegral(intgrl,input$spanLow))},
+#        "Integral2" = { doIntegral2(); #plotIntegral(intgrl2,input$spanLow)})
+        
+#})  
+#        "Density" = doDensity(data),
+#       "Breakouts" = {
+          
+         # doBreakouts(data)
+  #          sliderInput("range", label = h6("Fragment #range"), min = 1, #max = sizeDb(), step=1,   value = c(25, 175))
+#          },
+#        "Period" = doPeriod(data),
+#        "Amplitude" = doAmplitude(data))
+ 
+
+#reactive(bo$plot)
+
+#renderPlot({
+#  p()
+#  })
+
+#})
+
+
+```
+
+
+```{r}
+#data <- reactive(selectData(connection(), nameDs(), namePf()))
+#breakout <- reactive(breakout(data()$x, 
+#               min.size=10, method='multi', beta=.001, degree=1, plot=TRUE))
+
+#reactive(bo$plot)
+#output$breakout <- renderDygraph({breakout()$plot})
+ 
+
+ #plotBreakout(breakout(), funcAxis())})
+#dygraphOutput('breakout')
+#data <- reactive(selectData(connection(), nameDs(), namePf()))
+
+#output$density <- renderPlotly({ plotDensity(data(), funcAxis())}) 
+#plotlyOutput('density', width = "40%")
+
+#output$density <- renderDygraph({ plotDensity(data(), funcAxis())})
+#dygraphOutput('Density', width = "40%", height = "30%")
+
+
+```
+
+
+Test
+======================================================================
+
+```{r}
+lookupUci <- structure(c("server/databases/uciHar/body_acc_x_train.txt", "server/databases/uciHar/body_acc_y_train.txt","server/databases/uciHar/body_acc_z_train.txt","server/databases/uciHar/body_gyro_x_train.txt","server/databases/uciHar/body_gyro_y_train.txt","server/databases/uciHar/body_gyro_z_train.txt", "server/databases/uciHar/total_acc_x_train.txt", "server/databases/uciHar/total_acc_y_train.txt", "server/databases/uciHar/total_acc_z_train.txt" ), 
+                  .Names = c("acc_x_filtered", "acc_y_filtered", "acc_z_filtered", "gyro_x", "gyro_y","gyro_z", "acc_x", "acc_y", "acc_z"))
+
+selectInput('uciHarBase', label = h5('Select a database'), choices = lookupUci, selected = "acc_x")
+db <- reactive(input$uciHarBase)
+uci_db <- reactive(read.table(db()))
+
+
+```
+
+###
+
+```{r}
+
+x <- reactive(as.vector(t(uci_db())))
+counter <- reactive(c(1:length(x())))
+uci <- reactive(data.frame(counter(), x()))
+
+output$uci <- renderDygraph(plotHealthData(uci(), "ggg"))
+dygraphOutput('uci')
+```
+
+
+Map
+======================================================================
+
+
+
+```{r}
+# Draw the map without selected tracts
+#output$map <- renderLeaflet({
+
+#   data <-  merge(walking$ANDGPSLA, walking$ANDGPSLO, by=c("Date","Timestamp"))
+#                data <-  merge(data, walking$ANDGPSSP, by=c("Date","Timestamp"))
+#                colors <- heat.colors(7)[floor(data$ANDGPSSP) + 1]
+#                colors <- substr(colors, 1, 7)
+#                colors[is.na(colors)] <- "#aaaaaa"
+#               map <- leaflet() %>%
+#                addTiles() %>%  
+#                addCircleMarkers(data=data.frame(lat=data$ANDGPSLA, lng=data$ANDGPSLO), 
+#                                         radius=2, weight=0, fillColor=colors, fillOpacity=0.5)
+
+#    map
+
+ # })
+#leafletOutput('map')  
+```
+
+```{r}
+  # calories last 14 days
+#library(ggvis)
+#library(dplyr)
+#library(shinydashboard)
+#dtCalory <- reactive(selectHealthData(connection(), "'CALORY_BURN'" ,"'MICROSOFT_BAND'" ))
+#dtSteps <- reactive(selectHealthData(connection(), "'STEP_COUNT'" ,"'MICROSOFT_BAND'" ))
+
+  #  filter(dtCalory$counter > max(date) - 14) %>%
+  #  filter(!is.na(dtSteps()$x)) %>%
+ 
+#output$ggvis <- reactive({dtSteps()  %>%
+##    ggvis(x=~counter,y= ~x) %>%
+#    layer_lines() %>%
+#   layer_points() %>%
+#    add_axis("x", title="Date") %>%
+#    add_axis("y", title="Calories Burned")%>%
+#    set_options(width = "auto", height = 300)%>%
+#    bind_shiny("ggvis","ggvis_ui")})
+
+ #   ggvisOutput("ggvis")
+
+
+```
+
+
+
+
+Results
 ======================================================================
 
 
@@ -97,6 +520,7 @@ Row
 -----------------------------------------------------------------------
 
 ### Calories
+
 ```{r}
 
 #calories <- computeCalories()
@@ -117,6 +541,7 @@ renderValueBox({
 
 
 ### Heart Rate
+
 ```{r}
 dtHr <- reactive(selectHealthData(connection(), "'HEART_RATE'" ,"'MICROSOFT_BAND'" ))
 
@@ -133,6 +558,7 @@ renderValueBox({
 ```
 
 ### Steps
+
 ```{r}
 dtSteps <- reactive(selectHealthData(connection(), "'STEP_COUNT'" ,"'MICROSOFT_BAND'" ))
 
@@ -150,6 +576,7 @@ renderValueBox({
 
 
 ### Temperature
+
 ```{r}
 dtTemp <- reactive(selectHealthData(connection(), "'SKIN_TEMPERATURE'" ,"'MICROSOFT_BAND'" ))
 
@@ -169,6 +596,7 @@ renderValueBox({
 ```
 
 ### Speed
+
 ```{r}
 dtSpeed <- reactive(selectHealthData(connection(), "'SPEED'" ,"'MICROSOFT_BAND'" ))
 
@@ -184,6 +612,7 @@ renderValueBox({
 ```
 
 ### Activity
+
 ```{r}
 dtMotion <- reactive(selectHealthData(connection(), "'MOTION_TYPE'" ,"'MICROSOFT_BAND'" ))
 
@@ -199,238 +628,25 @@ renderValueBox({
 ```
 
 
-
 ### Drink
+
 ```{r}
-v <- 5#computeHR()
-valueBox(
-         value = tags$p(style = "font-size: 30px;",v),
-         icon = "fa-coffee",
-         color = ifelse(v > 170, "warning", "primary"))
+#v <- 5#computeHR()
+#valueBox(
+#         value = tags$p(style = "font-size: 30px;",v),
+#         icon = "fa-coffee")
+#         color = ifelse(v > 170, "warning", "primary"))
 ```
 
 ### Food
-```{r}
-v <- 5#computeHR()
-valueBox( 
-         value = tags$p(style = "font-size: 30px;",v),
-         icon = "fa-cutlery",
-         color = ifelse(v > 170, "warning", "primary"))
-```
-
-
-Row {.tabset }
-------------------------------------------------------------------------
-
-### Signal  
-
-
-```{r }
-selectData <- function(con, ds, pf){
-
-  switch(ds,
-         "'ACCELEROMETER'" = selectMovementData(con, ds, pf),
-         "'GYROSCOPE'" = selectMovementData(con, ds, pf),
-         "'HEART_RATE'" = selectHealthData(con, ds, pf),
-         "'SKIN_TEMPERATURE'" = selectHealthData(con, ds, pf),
-         "'GALVANIC_SKIN_RESPONSE'" = selectHealthData(con, ds, pf),
-         "'SPEED'" = selectHealthData(con, ds, pf),
-         "'STEP_COUNT'" = selectHealthData(con, ds, pf),
-         "'CALORY_BURN'" = selectHealthData(con, ds, pf),
-         "'DISTANCE'" = selectHealthData(con, ds, pf),
-         "'PACE'" = selectHealthData(con, ds, pf),         
-         "'MOTION_TYPE'" = selectHealthData(con, ds, pf), 
-         "'RR_INTERVAL'" = selectHealthData(con, ds, pf))
-} 
-plotData <- function(ds, data){
-
-  switch(ds,
-        "'ACCELEROMETER'" = plotMovementData(data, "Accelerometer"),
-         "'GYROSCOPE'" = plotMovementData(data, "Gyroscope"),
-         "'HEART_RATE'" = plotHealthData(data, "Heart rate"),
-         "'SKIN_TEMPERATURE'" = plotHealthData(data, "Skin Temperature"),
-         "'GALVANIC_SKIN_RESPONSE'" = plotHealthData(data, "Galvanic skin temperature"),
-         "'SPEED'" = plotHealthData(data, "Speed"),
-         "'STEP_COUNT'" = plotHealthData(data, "Step count"),
-         "'CALORY_BURN'" = plotHealthData(data, "Calory burn"),
-         "'DISTANCE'" = plotHealthData(data, "Distance"),
-         "'PACE'" = plotHealthData(data, "Pace"),         
-         "'MOTION_TYPE'" = plotHealthData(data, ""),
-         "'RR_INTERVAL'" = plotHealthData(data, "RR interval")) 
-}
-comuteSizeDb <- function(data){
-    return(length(data))
-}  
-## data-width=650
-
-# data <- reactive(selectData(connection(), nameDs(), namePf()))
-
-output$scatter <- renderDygraph({ plotData(nameDs(), data())}) #renderPlotly({ plotData(nameDs(), data())}) 
-dygraphOutput('scatter', width = "80%")
-# plotlyOutput('scatter', width = "80%")
-
-#sizeDb <- reactive(nrow(data()))
-minTime <-reactive(data()[1,]$dt)
-maxTime <- reactive(data()[sizeDb(),]$dt)
-
-startTime <- reactive(minTime())
-stopTime <- reactive(maxTime())
-
-deltaT <- reactive((as.numeric(maxTime()) - as.numeric(minTime()))/sizeDb())
-
-
-
-frequency <- reactive(1/deltaT())
- # reactive({ switch(namePf(), )
-#  data <- reactive(selectMovementData(connection(), nameDs(), namePf()))
-
-#    output$scatter <- renderPlotly({ plotMovementData(data())})  
-#    plotlyOutput('scatter', width = "80%")
-  
-#  data <- reactive(selectHealthData(connection(), nameDs(), namePf()))
-
- #   output$scatter <- renderPlotly({ plotHealthData(data())})  
-#    plotlyOutput('scatter', width = "80%")
-    
-```
-
-### Table
-```{r}
-#library(DT)
-# renderDataTable({ 
-#  DT::datatable(data()) %>% formatStyle(
- #   'x',
-#    backgroundColor = styleInterval(3.4, c('gray', 'yellow'))
-#  )
-#})
-
-
-renderPrint({
-    summary(data())
-  })
-
-
-```
-
-
-Column {data-width=350}
------------------------------------------------------------------------
-
-### Integral
 
 ```{r}
-selectFragment <- function(sig, axis, a, b, const){
-
-  len = nrow(sig)
-  med = 0
-
-
-switch(axis,
-         "X" = {subset <- sig$x[c(a:b)]; allowSigCentred <- T } ,
-         "Y" = {subset <- sig$y[c(a:b)]; allowSigCentred <- F} ,
-         "Z" = {subset <- sig$z[c(a:b)]; allowSigCentred <- F} )
-#  subset_x <- sig$x[c(a:b)]
- 
-
-  
-  if (const == TRUE){
-    med<-mean(subset)
-    main_axis <- subset - med
-
-  }else
-  {
-    main_axis <- subset
-  }
-
-   switch(axis,
-         "X" = {x <- main_axis; y <- sig$y[c(a:b)]; z <- sig$z[c(a:b)]; allowSigCentred <- T; allowFirstCentred <- T;  },
-         "Y" = {y <- main_axis; x <- sig$x[c(a:b)]; z <- sig$z[c(a:b)]; allowSigCentred <- F; allowFirstCentred <- F; },
-         "Z" = {z <- main_axis; x <- sig$x[c(a:b)]; y <- sig$y[c(a:b)];allowSigCentred <- F; allowFirstCentred <- T;  } )
- # y <- sig$y[c(a:b)]
-#  z <- sig$z[c(a:b)]
-  counter <- c(a:b)
-  fragment <- data.frame(counter, x, y , z)
-  
-  return( fragment)
-}  
-allowSigCentred <- T
-allowFirstCentred <- T
-a <- reactive(input$limitmin)#335
-b <- reactive(input$limitmax)#5000
-
-data <- reactive(selectData(connection(), nameDs(), namePf()))
-data_correct <- reactive(deleteBias_1(data()))
-frgmnt <- reactive(selectFragment(data_correct(), nameAxis(), a(), b(), 
-allowSigCentred ))
-
-
-intgrl <- reactive(integral(frgmnt()$x, 0, length(frgmnt()$x), deltaT(), T) )
-
-
-#library(signal)
-#reactive({
-#cutoffHz <- 1.28
-#sampleHz <- reactive(frequency())
-#nyqHz = sampleHz()/2
-#f <- butter(9, cutoffHz/nyqHz, type="low" )
-#ts[,c('ly2') := lapply(.(y2), function(x)(filtfilt(f,intgrl())))]
-#intgrl()$y2 <-ts$y2 - ts$ly2
-#})
-
-
-#intgrl()$y2 <- b})
-
-output$integral <- renderDygraph({ plotIntegral(intgrl(),input$spanLow)})
-dygraphOutput('integral', width = "40%", height = "30%")
-#output$integral <- renderPlotly({ plotIntegral(intgrl(),input$spanLow)}) 
-#plotlyOutput('integral', width = "40%")
-
-
-# Drag event for the scatterplot; will grab tractids of selected points
-#sub <- reactive({
-
-#    eventdata <- event_data('plotly_selected', source = 'source')
-    
-#    if (is.null(eventdata)) {
-      
-#      return(NULL) # do nothing
-      
-#    } else {
-      
- #     tracts <- eventdata[['key']]
-      
-  #    if (length(tracts) == 0) {
-        
-   #     tracts <- 'abcdefg' # a hack but it's working - set to something #that can't be selected
-        
- #     }
-
-
-  #      return(sub)
-        
-    
-   # }
-
- # })
-
-
+##v <- 5#computeHR()
+#valueBox( 
+#         value = tags$p(style = "font-size: 30px;",v),
+#         icon = "fa-cutlery")
+#         color = ifelse(v > 170, "warning", "primary"))
 ```
-
-### Density
-
-```{r}
-data <- reactive(selectData(connection(), nameDs(), namePf()))
-#output$density <- renderPlotly({ plotDensity(data(), nameAxis())}) 
-#plotlyOutput('density', width = "40%")
-output$density <- renderDygraph({ plotDensity(data(), nameAxis())})
-dygraphOutput('Density', width = "40%", height = "30%")
-
-
-```
-
-Results
-======================================================================
 
 Row
 -----------------------------------------------------------------------
-
