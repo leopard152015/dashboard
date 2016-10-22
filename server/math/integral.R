@@ -1,36 +1,54 @@
-deleteBias_1 <- function(sigData){
+correctionX <- function( sig ){
+  p <- sig$z/sig$x
+  arc_angle <- atan( p )
+  angle = sig$x/cos( arc_angle )
   
-  p <- sigData$z/sigData$x
-  arc_angle <- atan(p)
-  angle = sigData$x/cos(arc_angle)
+  p1 <- sig$y/sig$x
+  arc_angle_z <- atan( p1 )
+  angle2 = angle/cos( arc_angle_z )
   
-  p1 <- sigData$y/sigData$x
-  arc_angle_z <- atan(p1)
-  angle2 = angle/cos(arc_angle_z)
-  
-  sigData$x <- angle2
+  sig$x <- angle2
 
-  return(sigData)
-  
+  return( sig )
 }
 
-deleteBias_2 <- function(sigData){
-  g <- 9.81
-  pfi <- 1/cos(asin(sigData$z/g))
-  teta <- 1/cos(asin(sigData$y/g) ) 
- # p <- sigData$z/sigData$x
-#  arc_angle <- atan(p)
-#  angle = sigData$x/cos(arc_angle)
-  acc_y <-  sigData$x * pfi * teta # 1/cos(pfi) * 1/cos(teta)  
-  sigData$x <- acc_y
-  
-  return(sigData)
-  
+correctionY <- function( sig ){
+  return( sig )
 }
 
-integral1 <- function(fragment,a, b, delta, const){
+correctionZ <- function( sig ){
+  p <- sig$x/sig$z
+  arc_angle <- atan( p )
+  angle = sig$z/cos( arc_angle )
   
+  sig$z <- angle
   
+  return( sig )
+}
+
+integral1 <- function(fragment,a, b, delta){
+  
+  sig<-fragment
+  
+  len <- length(fragment)
+  N <- c(1:len)
+  x<-c(1:len)
+  f <- function(x) sig[x]*delta
+  f1<-0
+  area <- function(x){
+    n <- len-(len-(x+1))
+    
+    f1<- quadgk(f,x,n)
+    
+  }
+  v.area <- Vectorize(area)#,vectorize.args='x')(N)
+  v1<- sapply(N, v.area)
+  v1<-cumsum(v1)
+  
+  v2 <- 0
+  df <- data.frame(sig=fragment, y1=v1, y2=v2)
+  
+  return(df)
 }
 
 integral2 <- function(fragment, a, b, delta, const){

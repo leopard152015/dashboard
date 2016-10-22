@@ -1,17 +1,32 @@
 library(dygraphs)
 
 plotBreakout <- function(dev, axis){
-  d <- data.frame(dev$counter, dev$x)  
+#  message("ok")
+#  message(head(dev))
+  d <- data.frame(dev$counter, dev$x )  
   p<-dygraph( d, main = axis) %>% 
+    dyAxis("x", label = "Time") %>%
+    dyAxis("y", drawGrid = TRUE) %>%
+    dyOptions(includeZero = F, 
+              axisLineColor = "navy", 
+              gridLineColor = "lightblue")
+  print(p)
+}
+plotAnalysis <- function(dev, name){
+  
+ 
+  d <- data.frame(dev$counter, dev$x, dev$y)  
+  p<-dygraph( d, main = name) %>% 
     dyRangeSelector() %>%
     dySeries("dev.x",   label = "x") %>%
-    
+    dySeries("dev.y",   label = "y") %>%
+
     dyHighlight(highlightCircleSize = 5, 
                 highlightSeriesBackgroundAlpha = 0.2,
                 hideOnMouseOut = FALSE)
   print(p)
+  
 }
-
 plotMovementData <- function(dev, name){
   
  # p  <- plot_ly( x = dev$counter, y = dev$x,type = "scatter" ,mode="lines", name="X")%>% 
@@ -55,7 +70,7 @@ plotIntegral <- function(integral, ispan){
 #    add_lines(y = ~integral$sig, name = "Signal") %>%
 #    add_lines(y = ~integral$y1, name = "First", visible = T) %>%
 #    add_lines(y = ~integral$y2, name = "Second", visible = T          ) 
- 
+
   d <- data.frame(1:length(integral$sig), integral$sig, integral$y1 , integral$y2)  
   p<-dygraph( d, main = "Integral") %>% 
     dyRangeSelector() %>%

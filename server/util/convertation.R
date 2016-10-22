@@ -15,7 +15,9 @@ lookupDs <- structure(c("'ACCELEROMETER'", "'GYROSCOPE'",
                         "Calory","Distance", "Step Count", 
                         "Speed", "Pace", "Motion Type"))
 
-lookupFunc <- c("Integral1", "Integral2","Density", "Breakouts", "Period", "Amplitude")
+lookupFunc <- c("Integral1", "Integral2","Density", "Breakouts", "Analysis")
+
+lookupFilters <- c("Butterworth","Savitzky–Golay", "FFT")
 
 # Define the list if axis
 lookupAxis <- c("X","Y","Z")
